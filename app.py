@@ -1,9 +1,24 @@
 import os
 import json
 
+import numpy as np
+
 from sklearn.externals import joblib
 from sklearn.base import TransformerMixin 
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
+
 from flask import Flask, Response, render_template
+
+name_data = np.genfromtxt('name_list.tsv', delimiter='\t', dtype=str)
+
+n = 40000
+names = name_data[:n, 0]
+countries = name_data[:n, 1]
+
+idx = np.genfromtxt('idx.csv', dtype=int)
 
 class Reducer(object):
     def __init__(self, idx):
@@ -18,7 +33,17 @@ class Reducer(object):
     def get_params(self, *k, **kw):
         return {'': ''}
 
-name_clf = joblib.load('name_clf2.pkl')
+reducer = Reducer(idx)
+
+name_clf = Pipeline([('vect', CountVectorizer(analyzer='char',
+                                              ngram_range=(1,5),
+                                              max_features=200000)),
+                     ('tfidf', TfidfTransformer()),
+                     ('reducer', reducer),
+                     ('clf', MultinomialNB(alpha=10**-2.2631))])
+
+name_clf.fit(names, countries)
+
 class_names = name_clf.get_params()['clf'].classes_
 
 app = Flask(__name__)
