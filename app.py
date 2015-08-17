@@ -14,9 +14,8 @@ from flask import Flask, Response, render_template
 
 name_data = np.genfromtxt('name_list.tsv', delimiter='\t', dtype=str)
 
-n = 40000
-names = name_data[:n, 0]
-countries = name_data[:n, 1]
+names = name_data[:, 0]
+countries = name_data[:, 1]
 
 idx = np.genfromtxt('idx.csv', dtype=int)
 
@@ -33,14 +32,12 @@ class Reducer(object):
     def get_params(self, *k, **kw):
         return {'': ''}
 
-reducer = Reducer(idx)
-
 name_clf = Pipeline([('vect', CountVectorizer(analyzer='char',
                                               ngram_range=(1,5),
-                                              max_features=200000)),
+                                              max_features=100000)),
                      ('tfidf', TfidfTransformer()),
-                     ('reducer', reducer),
-                     ('clf', MultinomialNB(alpha=10**-2.2631))])
+                     ('reducer', Reducer(idx)),
+                     ('clf', MultinomialNB(alpha=0.014563484775012445))])
 
 name_clf.fit(names, countries)
 
@@ -58,10 +55,6 @@ def guess(name='test'):
     predictions = []
     for c, lp in zip(b[0], log_proba[:, t5].flatten())[::-1]:
         predictions.append({'country': c, 'probability': lp})
-
-#    predictions = []
-#    for c, lp in zip(['q', 'w', 'e', 'r', 't'], [0.1, 0.2, 0.3, 0.4, 0.5]):
-#        predictions.append({'country': c, 'probability': lp})
 
     return Response(json.dumps(predictions, indent=2), mimetype='application/json')
 
