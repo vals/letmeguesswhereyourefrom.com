@@ -4,13 +4,16 @@ On the website [letmeguesswhereyourefrom.com](http://www.letmeguesswhereyourefro
 
 [FIGURE]
 
-I made this web application as an exercise in applying machine learning, in this post I will describe it.
+I made this web application as an exercise in applying machine learning, in this post I will describe 
 
-I wanted to see how distinctive names are depending on origin. People can quite easily guess where someone is from based on their name. We have encountered many examples of name country pairings.
+ - How I got data,
+ - How I made the model,
+ - How I optimized the model for use in a web application, and,
+ - How I made the web application.
 
-### Getting data
+### Getting training data
 
-The first problem is where to get the data from. For the model to be representative you want to data from real people. There are many lists of "Most people names in ..." for various countries. These however mostly consist of either first names or surnames. I doubted just for example first names would not contain enough information to train a model. For a while I thought I could get surname lists and first name lists and randomly pair elements from them to make larger training sets. Looking for real names, I found that Wikipedia has [a list of people who have Wikipedia pages by country](https://en.wikipedia.org/wiki/Lists_of_people_by_nationality)!
+The first problem is where to get the data from. For the model to be representative I would want data from real people. There are many lists of "Most common names in ..." for various countries. These however mostly consist of either first names or surnames. I doubted just for example first names would not contain enough information to train a model. For a while I thought I could get surname lists and first name lists and randomly pair elements from them to make larger training sets. Looking for real names, I found that Wikipedia has [a list of people who have Wikipedia pages by country](https://en.wikipedia.org/wiki/Lists_of_people_by_nationality)!
 
 We can quickly get all this data
 
@@ -28,7 +31,7 @@ We can quickly get all this data
     res = requests.get(wiki + '/wiki/Lists_of_people_by_nationality')
     
 <br>
-By inspecting the downladed html we notice a pattern on the rows that contain links to lists of people. We can parse these and extract the country name and URL to the list.
+By inspecting the downloaded HTML I noticed a pattern on the rows that contain links to lists of people. So I parsed these and extract the country name and URL to the list.
 
     list_urls = {}
     for line in res.content.split('\n'):
@@ -52,9 +55,9 @@ By inspecting the downladed html we notice a pattern on the rows that contain li
 	            fh.write('{}\t{}\n'.format(name, country))
 
 <br>
-There are some obvious problems with this. Not all lines we parse out are actually lists of names, but other lists. Additionally the larger countries have so many entries that they link to lists of sublists rather than actualy lists. This includes the US and China. The number of countries isn't that high and it would be possible to just add these manually. But I don't feel like doing that and will ignore those cases.
+There are some obvious problems with this. Not all lines I parse out are actually lists of names, but other lists. Additionally the larger countries have so many entries that they link to lists of sublists rather than actually lists. (This includes US and China.) The number of countries isn't that high and it would be possible to just add these manually. But I don't feel like doing that and will ignore those cases.
 
-To make downstream analysis easier, we romanize all names using the unidecode package. This translates all characters in names to ASCII.
+To make downstream analysis easier, I romanized all names using the unidecode package. This translates all characters in the names to ASCII.
 
 In total the process fetches in total 68,634 names distributed over 214 countries.
 
@@ -62,13 +65,13 @@ In total the process fetches in total 68,634 names distributed over 214 countrie
 
 I knew that N-grams of words are commonly used for document classification, and thought I can make something similar for just letters in names. Turns out this was already nicely implemented in the scikit learn as a parameter to the CountVectorizer class.
 
-Largely, I followed the [scikit-learn text analytics tutorial](http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html). The tutorial said "bags of words" representations of documents typically have more than 100 0000 features. Since a "document" in my case is a name, there are not so many n-grams in each. To get a large number of featuers I set the CountVectorizer to consider all n-grams for all n between 1 and 5. I limit the maximum number of features to 100000 so that I know how large the data sets will be.
+For the most part I followed the [scikit-learn text analytics tutorial](http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html). The tutorial said "bags of words" representations of documents typically have more than 100 0000 features. Since a "document" in my case is a name, there are not so many n-grams in each. To get a large number of featuers I set the CountVectorizer to consider all N-grams for all N between 1 and 5. I limited the maximum number of features to 100000 so that I would know how large the data sets would be.
 
-As per the tutorial, I push the output of the CountVectorizer trough a TfidfTransformer. The idea is to downscale weights of features that occur in many samples.
+As per the tutorial, I push the output of the CountVectorizer through a TfidfTransformer. The idea with this is to downscale weights of features that occur in many samples.
 
-Finally we use these features to train a Multinomial Naive Bayes model.
+Finally, I use these features to train a [Multinomial Naive Bayes model](http://scikit-learn.org/stable/modules/naive_bayes.html). (I'm not discussing much of the details of the methods here, as they are well described in the references. A thing about scikit-learn for applying machine learning that I like is also that you can use a lot of very nice tools without knowing much about the details.)
 
-We combine all these steps to a pipeline, so we can easily jsut supply raw text and get a categorical prediction.
+All these steps are combined to a pipeline, so we can easily just supply raw text and get a categorical prediction.
 
     from sklearn.feature_extraction.text import CountVectorizer
     from sklearn.feature_extraction.text import TfidfTransformer
@@ -83,7 +86,7 @@ We combine all these steps to a pipeline, so we can easily jsut supply raw text 
                      	('clf', MultinomialNB())])
 
 <br>
-We read in our data, and split it in to a training set that we will use to tune the model, and a testing set that we will finally use to evaluate the model.
+The data is read in, and split in to a training set that we will use to tune the model, and a testing set that we will finally use to evaluate the model.
 
     df = pd.read_table('name_list.tsv', header=-1)
     df.columns = ['name', 'country']
@@ -91,7 +94,7 @@ We read in our data, and split it in to a training set that we will use to tune 
     train_test_split(df.name, df.country, test_size=10000)
 
 <br>
-And we fit our pipeline using the training data.
+Now I could simply train the classifier using the training data.
 
     name_clf.fit(name_train, country_train)
 
@@ -101,11 +104,11 @@ And we fit our pipeline using the training data.
 	Out []: 0.27860000000000001
 
 <br>
-While much better than random guessing (1 / 214 = 0.0047), it's not a particularly impressive score.
+While much better than randomly guessing countries (1 / 214 = 0.0047), it's not a particularly impressive score.
 
-Earlier the same day though, I had listened to the [Talking Machines](http://www.thetalkingmachines.com/) podcast where [Jennifer Listgarten](http://research.microsoft.com/en-us/um/people/jennl/) described how they had trained a model to predict efficient CRISPR/Cas9 guide targets ([Azimuth](http://research.microsoft.com/en-us/projects/azimuth)). She said that predicting _the best_ guide was a very hard problem. But predicting say the top 5 guides had very high accuracy. Trying a small number of guides is much more efficient than many possible guides anyway.
+Earlier the same day, I had listened to the [Talking Machines](http://www.thetalkingmachines.com/) podcast where [Jennifer Listgarten](http://research.microsoft.com/en-us/um/people/jennl/) described how they had trained a model to predict efficient CRISPR/Cas9 guide targets (avilable in a soon to be released service [Azimuth](http://research.microsoft.com/en-us/projects/azimuth)). She said that predicting _the best_ guide was a very hard problem. But predicting say the top 5 guides had very high accuracy. Trying a small number of guides is much more efficient than many possible guides anyway.
 
-So I steal that strategy, and return a top 5 of predicted countries for a given name. That means changing the evaluation criterion. The strategy is very well suited for MultinomialNB, since prediction means evaluating the posterior probability for each class. We can just take these probabilities and sort out the highest ones.
+So I stole that strategy, and return a top 5 of predicted countries for a given name. Thus I change the model evaluation criterion. The strategy is very well suited for MultinomialNB, since prediction means evaluating the posterior probability for each class. We can just take these probabilities and sort out the highest ones.
 
     t5 = name_clf.predict_log_proba(name_test).argsort(axis=1)[:,-5:]
     a = country_test
@@ -174,11 +177,11 @@ While some of the suggestions are... counterintuitive... there is some German th
 
 ### Making the model deployable
 
-While I thought it would be nice to make the model usable through a web application, I didn't want to spend a fortune doing so! Heroku offers free web application hosting in their Free tier with the limitation of 512 MB of memory. Additionally, the final size of the compiled web application "slug" can only be 300 MB.
+While I thought it would be nice to make the model usable through a web application, I didn't want to spend a fortune doing so! [Heroku](https://www.heroku.com/pricing) offers free web application hosting in their Free tier with the limitation of 512 MB of memory. Additionally, the final size of the compiled web application "slug" can only be 300 MB.
 
 The training data is 58 000 examples with 100 000 features each. The MultinomialNB model needs to store two dense matrices of size (58 000, 100 000). Running the model in the Python interpreter requires a bit over 1 GB of RAM. Storing the model with joblib.dump() as recommended in the [documentation](http://scikit-learn.org/stable/modules/model_persistence.html) creates around 700 MB of data, so we wouldn't be able to deploy it on Heroku.
 
-The strategy I settled for was to put in a step in the pipeline to ignore non-informative features. To find which featuers contain the most information I used TruncatedSVD, a dimensionality reduction technique known to work well for "bags of words" models.
+The strategy I settled for was to put in a step in the pipeline to ignore non-informative features. To find which features contain the most information I used TruncatedSVD, a dimensionality reduction technique known to work well for "bags of words" models.
 
     from sklearn.decomposition import TruncatedSVD
 
@@ -255,3 +258,11 @@ With the indices for the features saved, it is actually relatively quick to just
 ### Web application
 
 The web application itself is written using the microframework Flask. I define one entry point that provides an API, where the name is queried and the predictor is called to return the top scoring countries. The API returns these in JSON format. The second entry point just serves a HTML file, which in turn loads a Javascript file that connects the input box and buttons to the API.
+
+To get access to scientific Python tools like scikit-learn on Heroku I use the [Conda Buildpack](https://github.com/kennethreitz/conda-buildpack).
+
+You can see the full implementation of the app on [GitHub](https://github.com/vals/letmeguesswhereyourefrom.com), as well as the [Jyputer notebook](https://github.com/vals/letmeguesswhereyourefrom.com/blob/master/Making%20the%20name%20classifier.ipynb) where I made the model.
+
+Finally, have a look at the result!
+
+[letmeguesswhereyourefrom.com](http://www.letmeguesswhereyourefrom.com/)
