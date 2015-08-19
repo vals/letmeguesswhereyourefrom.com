@@ -207,6 +207,7 @@ We extract importances in the TruncatedSVD by looking at the lengths of the sing
 
     idx = np.linalg.norm(tsvd.components_[:, :], axis=0).argsort()
 
+<br>
 We make a "Reducer" class which we can plug in to the pipeline to tell the pipeline which features to pass on from the feature extraction step to the MultinomialNB classifier.
 
     from sklearn.base import TransformerMixin
