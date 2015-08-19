@@ -1,1 +1,1 @@
-web: gunicorn --debug app:app --log-file=-
+web: twistd -n web --port $PORT --wsgi app.app

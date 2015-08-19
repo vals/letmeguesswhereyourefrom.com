@@ -20,7 +20,7 @@
 
 	send_request = function() {
 		name = $("#name").val()
-		return guess_country("/guess/" + (JSON.stringify(name)), disp);
+		return guess_country("/guess/" + name, disp);
 	}
 
 	$("#guess").click(send_request)

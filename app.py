@@ -11,6 +11,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 
 from flask import Flask, Response, render_template
+from unidecode import unidecode
 
 name_data = np.genfromtxt('name_list.tsv', delimiter='\t', dtype=str)
 
@@ -48,6 +49,7 @@ app = Flask(__name__)
 
 @app.route('/guess/<name>')
 def guess(name='test'):
+    name = unidecode(name)
     print name
     log_proba = name_clf.predict_log_proba([name])
     t5 = log_proba.argsort(axis=1)[:,-5:]
